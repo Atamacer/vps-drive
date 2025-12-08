@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 
 import { FilesInterceptor } from '@nestjs/platform-express';
-import { UploadService } from './upload.service';
+import { UploadService, FileMetadata } from './upload.service';
 
 @Controller('upload')
 export class UploadController {
@@ -22,7 +22,7 @@ export class UploadController {
       }),
     )
     files: Array<Express.Multer.File>,
-  ) {
+  ): Promise<{ message: string; filesData: FileMetadata[] }> {
     return this.uploadService.processFiles(files);
   }
 }

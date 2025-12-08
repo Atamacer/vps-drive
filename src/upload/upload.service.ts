@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 
-interface FileMetadata {
+export interface FileMetadata {
   originalname: string;
   filename: string;
   path: string;
