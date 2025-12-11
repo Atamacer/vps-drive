@@ -8,5 +8,5 @@ docker compose up -d -build
 ```
 Для разработки
 ```text
-npm install prisma --save-dev  
+npm install prisma --save-dev @types/multer @types/archiver
 ```

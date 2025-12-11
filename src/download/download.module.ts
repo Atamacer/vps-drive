@@ -4,6 +4,6 @@ import { DownloadService } from './download.service';
 
 @Module({
   controllers: [DownloadController],
-  providers: [DownloadService]
+  providers: [DownloadService],
 })
 export class DownloadModule {}

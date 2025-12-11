@@ -1,12 +1,20 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { Request } from 'express';
 
 const UPLOAD_PATH = './uploads';
 
-export const editFileName = (req, file, callback) => {
-  const originalName = file.originalname;
-  const name = path.parse(originalName).name;
-  const extension = path.parse(originalName).ext;
+type EditFileNameCallback = (error: Error | null, filename: string) => void;
+
+export const editFileName = (
+  _req: Request,
+  file: Express.Multer.File,
+  callback: EditFileNameCallback,
+): void => {
+  const originalName: string = file.originalname;
+  const parsedPath = path.parse(originalName);
+  const name: string = parsedPath.name;
+  const extension: string = parsedPath.ext;
 
   let fileName = originalName;
   let counter = 1;
