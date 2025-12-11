@@ -14,7 +14,6 @@ export class UploadService {
     if (!files || files.length === 0) {
       throw new BadRequestException('Необходимо загрузить хотя бы один файл.');
     }
-
     const filesData: FileMetadata[] = files.map((file) => ({
       originalname: file.originalname,
       filename: file.filename,

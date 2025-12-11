@@ -3,7 +3,6 @@ import { AuthModule } from './auth/auth.module';
 import { UploadModule } from './upload/upload.module';
 import { DownloadModule } from './download/download.module';
 import { ConfigModule } from '@nestjs/config';
-import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
   imports: [
@@ -11,7 +10,6 @@ import { PrismaModule } from './prisma/prisma.module';
     UploadModule,
     DownloadModule,
     ConfigModule.forRoot({ isGlobal: true }),
-    PrismaModule,
   ],
   controllers: [],
   providers: [],
