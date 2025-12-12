@@ -3,18 +3,23 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as archiver from 'archiver';
 import { createReadStream, existsSync, ReadStream, statSync } from 'fs';
+import { Response } from 'express';
 import { FileInfo } from './interfaces/file-info.interface';
+
+interface ErrnoException extends Error {
+  errno?: number;
+  code?: string;
+  path?: string;
+  syscall?: string;
+  stack?: string;
+}
 
 @Injectable()
 export class DownloadService {
   private readonly uploadsDir = './uploads';
 
-  /**
-   * Получить список всех файлов в папке uploads
-   */
   async getFileList(): Promise<FileInfo[]> {
     try {
-      // Проверяем существование папки
       await fs.access(this.uploadsDir);
 
       const files = await fs.readdir(this.uploadsDir);
@@ -36,41 +41,30 @@ export class DownloadService {
       }
 
       return fileInfos.sort((a, b) => a.name.localeCompare(b.name));
-    } catch (error) {
+    } catch (error: unknown) {
       // Если папки не существует, возвращаем пустой массив
-      if (error.code === 'ENOENT') {
+      const err = error as ErrnoException;
+      if (err.code === 'ENOENT') {
         return [];
       }
-      throw error;
-    }
-  }
-
-  /**
-   * Скачать один файл
-   */
-  async downloadSingleFile(
-    filename: string,
-  ): Promise<{ stream: ReadStream; filename: string }> {
-    const filePath = path.join(this.uploadsDir, filename);
-
-    if (!existsSync(filePath)) {
       throw new HttpException(
-        `File ${filename} not found`,
-        HttpStatus.NOT_FOUND,
+        'Failed to get file list',
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
-
-    const stream = createReadStream(filePath);
-    return { stream, filename };
   }
 
-  /**
-   * Скачать несколько файлов в ZIP-архиве
-   */
-  async downloadMultipleFiles(
-    filenames: string[],
-  ): Promise<{ archive: archiver.Archiver; archiveName: string }> {
-    // Проверяем существование всех файлов
+  async prepareFilesForDownload(filenames?: string[]): Promise<{
+    type: 'single' | 'multiple';
+    filename: string;
+    stream?: ReadStream;
+    archive?: archiver.Archiver;
+  }> {
+    if (!filenames || filenames.length === 0) {
+      const allFiles = await this.getFileList();
+      filenames = allFiles.map((f) => f.name);
+    }
+
     const missingFiles: string[] = [];
 
     for (const filename of filenames) {
@@ -87,69 +81,133 @@ export class DownloadService {
       );
     }
 
-    // Создаем архив
+    if (filenames.length === 1) {
+      const filePath = path.join(this.uploadsDir, filenames[0]);
+      const stream = createReadStream(filePath);
+
+      return {
+        type: 'single',
+        filename: filenames[0],
+        stream,
+      };
+    }
+
     const archive = archiver('zip', {
       zlib: { level: 9 }, // Максимальное сжатие
     });
 
     const archiveName = `download_${Date.now()}.zip`;
 
-    // Добавляем файлы в архив
     for (const filename of filenames) {
       const filePath = path.join(this.uploadsDir, filename);
       archive.file(filePath, { name: filename });
     }
 
-    // Завершаем архив
     archive.finalize();
 
-    return { archive, archiveName };
+    return {
+      type: 'multiple',
+      filename: archiveName,
+      archive,
+    };
   }
 
-  /**
-   * Универсальный метод для скачивания файлов
-   */
-  async downloadFiles(filenames?: string[]) {
-    // Если не указаны файлы, скачиваем все
-    if (!filenames || filenames.length === 0) {
-      const allFiles = await this.getFileList();
-      filenames = allFiles.map((f) => f.name);
-    }
+  formatBytes(bytes: number, decimals = 2): string {
+    if (bytes === 0) return '0 Bytes';
 
-    // Если файл один - отдаем как есть
-    if (filenames.length === 1) {
-      return this.downloadSingleFile(filenames[0]);
-    }
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
 
-    // Если файлов несколько - создаем архив
-    return this.downloadMultipleFiles(filenames);
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
   }
 
-  /**
-   * Проверить существование файла
-   */
-  async fileExists(filename: string): Promise<boolean> {
-    const filePath = path.join(this.uploadsDir, filename);
-    try {
-      await fs.access(filePath);
-      const stats = await fs.stat(filePath);
-      return stats.isFile();
-    } catch {
-      return false;
-    }
-  }
+  async handleFileDownload(
+    filenames: string[] | undefined,
+    response: Response,
+  ): Promise<void> {
+    const result = await this.prepareFilesForDownload(filenames);
 
-  /**
-   * Получить размер файла
-   */
-  getFileSize(filename: string): number {
-    const filePath = path.join(this.uploadsDir, filename);
-    if (!existsSync(filePath)) {
+    if (result.type === 'single' && result.stream) {
+      const filePath = path.join(this.uploadsDir, result.filename);
+      const stats = statSync(filePath);
+
+      response.set({
+        'Content-Disposition': `attachment; filename="${encodeURIComponent(result.filename)}"`,
+        'Content-Type': 'application/octet-stream',
+        'Content-Length': stats.size.toString(),
+      });
+
+      result.stream.pipe(response);
+    } else if (result.type === 'multiple' && result.archive) {
+      response.set({
+        'Content-Disposition': `attachment; filename="${result.filename}"`,
+        'Content-Type': 'application/zip',
+      });
+
+      result.archive.pipe(response);
+    } else {
       throw new HttpException(
-        `File ${filename} not found`,
-        HttpStatus.NOT_FOUND,
+        'Failed to prepare files for download',
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
-    return statSync(filePath).size;
+  }
+
+  async deleteFiles(filenames: string[]): Promise<{
+    success: boolean;
+    deleted: string[];
+    failed: Array<{ filename: string; error: string }>;
+  }> {
+    if (!filenames || filenames.length === 0) {
+      throw new HttpException(
+        'No files specified for deletion',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const deleted: string[] = [];
+    const failed: Array<{ filename: string; error: string }> = [];
+
+    for (const filename of filenames) {
+      try {
+        const filePath = path.join(this.uploadsDir, filename);
+
+        if (!existsSync(filePath)) {
+          failed.push({
+            filename,
+            error: 'File not found',
+          });
+          continue;
+        }
+
+        await fs.unlink(filePath);
+        deleted.push(filename);
+      } catch (error: unknown) {
+        const err = error as ErrnoException;
+        failed.push({
+          filename,
+          error: err.message || 'Unknown error',
+        });
+      }
+    }
+
+    if (deleted.length === 0 && failed.length > 0) {
+      const errorMessages = failed
+        .map((f) => `${f.filename}: ${f.error}`)
+        .join(', ');
+      throw new HttpException(
+        `Failed to delete files: ${errorMessages}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+
+    return {
+      success: deleted.length > 0,
+      deleted,
+      failed,
+    };
   }
 }
