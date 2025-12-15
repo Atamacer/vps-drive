@@ -7,14 +7,16 @@ import {
   HttpException,
   NotFoundException,
   Query,
-  Res,
+  Res, UseGuards,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { DownloadService } from './download.service';
 import { DownloadFilesDto } from './dto/download-files.dto';
 import { DeleteFilesDto } from './dto/delete-files.dto';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('download')
+@UseGuards(AuthGuard('jwt'))
 export class DownloadController {
   constructor(private readonly downloadService: DownloadService) {}
 

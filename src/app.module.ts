@@ -9,7 +9,7 @@ import { ConfigModule } from '@nestjs/config';
     AuthModule,
     UploadModule,
     DownloadModule,
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
   ],
   controllers: [],
   providers: [],
