@@ -11,7 +11,16 @@ export const editFileName = (
   file: Express.Multer.File,
   callback: EditFileNameCallback,
 ): void => {
-  const originalName: string = file.originalname;
+  let originalName = file.originalname;
+
+  if (/[�?]/.test(originalName) || /[^\x00-\x7F]/.test(originalName)) {
+    try {
+      originalName = Buffer.from(originalName, 'binary').toString('utf8');
+    } catch (e) {
+      console.warn('Не удалось декодировать имя файла:', originalName);
+    }
+  }
+
   const parsedPath = path.parse(originalName);
   const name: string = parsedPath.name;
   const extension: string = parsedPath.ext;

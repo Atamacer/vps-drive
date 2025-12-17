@@ -42,7 +42,7 @@ export class DownloadService {
 
       return fileInfos.sort((a, b) => a.name.localeCompare(b.name));
     } catch (error: unknown) {
-      // Если папки не существует, возвращаем пустой массив
+      // Если папки не существует, возвращает пустой массив
       const err = error as ErrnoException;
       if (err.code === 'ENOENT') {
         return [];
@@ -93,7 +93,7 @@ export class DownloadService {
     }
 
     const archive = archiver('zip', {
-      zlib: { level: 9 }, // Максимальное сжатие
+      zlib: { level: 9 },
     });
 
     const archiveName = `download_${Date.now()}.zip`;

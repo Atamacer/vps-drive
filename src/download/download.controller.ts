@@ -7,7 +7,8 @@ import {
   HttpException,
   NotFoundException,
   Query,
-  Res, UseGuards,
+  Res,
+  UseGuards,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { DownloadService } from './download.service';
@@ -15,7 +16,7 @@ import { DownloadFilesDto } from './dto/download-files.dto';
 import { DeleteFilesDto } from './dto/delete-files.dto';
 import { AuthGuard } from '@nestjs/passport';
 
-@Controller('download')
+@Controller('api/download')
 @UseGuards(AuthGuard('jwt'))
 export class DownloadController {
   constructor(private readonly downloadService: DownloadService) {}
@@ -55,7 +56,6 @@ export class DownloadController {
     try {
       await this.downloadService.handleFileDownload(dto.filenames, response);
     } catch (error: unknown) {
-      // Обработка ошибок с правильной типизацией
       if (error instanceof HttpException) {
         if (error.getStatus() === 404) {
           throw new NotFoundException(error.message);
@@ -78,7 +78,7 @@ export class DownloadController {
         success: result.success,
         message:
           result.deleted.length > 0
-            ? `Successfully deleted ${result.deleted.length} file(s)`
+            ? `Успешно удалено ${result.deleted.length} файл(ов)`
             : 'No files were deleted',
         deleted: result.deleted,
         failed: result.failed.length > 0 ? result.failed : undefined,
@@ -91,7 +91,7 @@ export class DownloadController {
         throw error;
       }
 
-      throw new BadRequestException('Failed to delete files');
+      throw new BadRequestException('Ошибка удаления файла(ов)');
     }
   }
 }

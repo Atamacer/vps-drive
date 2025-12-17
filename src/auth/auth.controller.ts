@@ -11,7 +11,7 @@ import { LoginDto } from './dto/login.dto';
 import { MessageResponseDto } from './dto/message-response.dto';
 import { TokenResponseDto } from './dto/token-response.dto';
 
-@Controller('auth')
+@Controller('api/auth')
 @UsePipes(
   new ValidationPipe({
     whitelist: true,
