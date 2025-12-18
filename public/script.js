@@ -1,6 +1,6 @@
 class FileManagerApp {
   constructor() {
-    this.baseUrl = 'http://localhost:443/api';
+    this.baseUrl = 'http://localhost:80/api';
     this.token = localStorage.getItem('token');
     this.selectedFiles = [];
     this.filesToUpload = [];

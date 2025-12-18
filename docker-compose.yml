@@ -2,12 +2,12 @@ services:
   nest-app:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: ${NODE_ENV}.Dockerfile
     container_name: nestjs-app
     ports:
       - "80:80"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=${NODE_ENV}
     volumes:
       - ./:/app
       - /app/node_modules
