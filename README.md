@@ -4,7 +4,7 @@
 git clone https://github.com/Atamacer/vps-drive
 ```
 ```text
-docker compose up -d -build
+docker compose up -d --build
 ```
 Для разработки
 ```text
