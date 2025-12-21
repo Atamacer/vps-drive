@@ -18,13 +18,9 @@ export class UploadService {
     }
 
     const filesData: FileMetadata[] = files.map((file) => {
-      // filename уже должно быть корректным после editFileName
-      // originalname может содержать крякозябры, но мы его не используем
-      // для отображения пользователю
-
       return {
-        originalname: file.originalname, // оставляем как есть
-        filename: file.filename, // это уже исправленное имя
+        originalname: file.originalname,
+        filename: file.filename,
         path: file.path,
         size: file.size,
         mimetype: file.mimetype,
